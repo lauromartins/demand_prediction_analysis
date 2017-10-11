@@ -1,0 +1,340 @@
+---
+title: "Projeto Lauro"
+author: "Lauro"
+date: "11 de outubro de 2017"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## ESPECIFICAÇÃO DO PROBLEMA
+
+O Magazine Luiza figura atualmente entre os maiores varejistas do país e por consequência também enfrenta o desafio de fazer uma predição adequada a sua demanda. Pensando nisso, você determinará quantas unidades de cada produto devemos comprar do fornecedor, lembrando que excessos significam estoque parado e escassez significa cliente perdido.
+
+Abaixo no tópico "Dados", você encontrará as informações de como acessar o arquivo csv com os dados históricos de venda de produtos. Os dados que seguem possuem a quantidade vendida e o valor de venda.
+
+a) Faça uma separação em grupos de produtos, usando um algoritmo de agrupamento não supervisionado. Isso será muito importante para o próximo ítem, pois como já exposto antes, existem produtos com características particulares. Avalie a qualidade do agrupamento, assim como as características que definem cada grupo.
+
+b) Faça a previsão de venda para cada um dos produtos para os meses de junho, julho e agosto de 2017. Imagine que você tem que fazer a compra para reposição desses três meses e que os estoques estão zerados, quantas peças de cada tipo você compraria? Também demonstre as métricas de qualidade do modelo gerado, discorrendo sobre os parâmetros escolhidos para a execução do algoritmo.
+
+c) Faça uma análise dos resultados que encontrou, discorra sobre o problema e exponha suas percepções e descobertas. Tem algum dado que seria relevante e que não foi fornecido?
+
+
+
+
+## TRATAMENTO E PREPARACAO DOS DADOS
+
+A linguagem de programação R foi escolhida por ser uma linguagem estatística robusta e significativamente utilizada para análise de dados nas diversas comunidades de cientistas de dados espalhadas pelo mundo. Poderia ter sido utilizada a linguagem Python para esse mesmo propósito. Porém, como eu estou atualmente praticando a linguagem R no curso Formação Cientista de Dados, da Data Science Academy, optei por utilizar tal linguagem. Todas as linhas de código estão devidamente comentadas visando uma explicação simples para quem é leigo na linguagem R. Os comentário em R são feitos utilizando o caractere '#'. Portanto, tudo que aparece após o símbolo '#' é tratado como comentário.
+
+
+
+```{r codigo1}
+#inclusao dos pacotes necessarios
+#install.packages('dplyr') #Pacote para a transformacao dos dados
+suppressMessages(library(dplyr))
+
+#troque pelo seu diretorio de trabalho
+#faz a leitura do arquivo
+arquivo = read.csv("C:/Users/Lauro Martins/Desktop/desafio.csv")
+
+
+#obtem apenas os produtos que foram vendidos de fato
+produtosVendidos = filter(arquivo, process_status == 'processado')
+
+
+#mostra as 6 primeiras linhas do conjunto de dados obtido pela linha acima
+#Obs.: algumas colunas foram ocultadas
+head(produtosVendidos[, c(2, 3, 4, 8)])
+
+
+#Para facilitar a compreensão, o código (code) e a categoria de cada produto foram 
+#transformados em um número inteiro
+produtosVendidos[, 'code'] = as.numeric(produtosVendidos$code) 
+produtosVendidos[, 'category'] = as.numeric(produtosVendidos$category)
+
+
+#mostra as 6 primeiras linhas do conjunto de dados após a conversão acima
+#Obs.: algumas colunas foram ocultadas
+head(produtosVendidos[, c(2, 3, 4, 8)])
+
+
+#retira a coluna order_id por não ser necessária na análise
+produtosVendidos['order_id'] = NULL
+
+
+#obtem a quantidade de vendas de cada produto em ordem decrescente
+qtdVendasCadaProduto = count(produtosVendidos, code, sort = TRUE) 
+
+
+#mostra os 6 primeiros produtos com suas respectivas quantidades (n)
+#Por exemplo, o produto 25 foi vendido 18943 vezes
+head(qtdVendasCadaProduto)
+
+
+#obtem a quantidade de produtos diferentes (131 produtos)
+qtdProdutos = nrow(qtdVendasCadaProduto) 
+
+#obtem a quantidade de vendas em cada categoria em ordem decrescente
+qtdVendasCadaCategoria = count(produtosVendidos, category, sort = TRUE)
+
+#mostra as 6 primeiras categorias com suas respectivas quantidade de vendas
+#Por exemplo a categoria 1 foi a mais vendida, com 133046 vendas
+head(qtdVendasCadaCategoria)
+
+#obtem a quantidade de categorias diferentes (11 categorias)
+qtdCategorias = nrow(qtdVendasCadaCategoria)
+
+```
+
+
+
+
+## ANÁLISE DOS DADOS - agrupamento
+
+
+
+
+```{r codigo3}
+#obtem apenas as colunas numericas que interessam para o agrupamento
+analise1 = select(produtosVendidos, code, quantity, price, pis_cofins, icms, tax_substitution, 
+                  category, liquid_cost)
+
+#ordena as linhas pelo codigo do produto
+analise1 = arrange(analise1, code)
+
+
+#agrupa pela categoria do produto
+#obtem a quantidade de cada produto vendido
+#obtem o preco total das vendas de cada produto
+#obtem o  valor total do custo liquido de cada produto
+#ordena em ordem decrescente pelo preco total das vendas de cada produto
+x = analise1 %>% 
+  group_by(category) %>%  
+  summarise(qtd_produtos = sum(quantity),  
+            total_venda = sum(price),  
+            custo_liq = sum(liquid_cost)) %>%   
+  arrange(desc(total_venda))  
+
+#Segue abaixo uma tabela que mostra a relação de cada categoria com os seus respectivos valores
+#Por exemplo, a categoria 1 foi a mais vendida
+print(x)
+
+
+
+#utiliza o algoritmo k-means da função padrão em R com 3 clusters (grupos)
+#k-means é um algoritmo de agrupamento não supervisionado
+km = kmeans(x, 3)
+
+
+#plota um grafico que mostra 6 comparacoes:
+#categoria de cada produto vs. quantidade de cada produto vendido
+#categoria de cada produto vs. preco total das vendas de cada produto
+#categoria de cada produto vs. valor total do custo liquido de cada produto
+#quantidade cada produto vendido vs. preco total das vendas de cada produto
+#quantidade cada produto vendido vs. valor total do custo liquido de cada produto
+#preco total das vendas de cada produto vs. valor total do custo liquido de cada produto
+plot(x, col = km$cluster+1, main = 'Resultado agrupamento com 3 clusters', pch = 20, cex = 3)
+
+```
+
+É possível perceber que a categoria 1 (ponto vermelho no gráfico) é disparadamente a categoria mais vendida. Consequentemente, essa categoria fornece o maior valor de venda e o maior lucro. Além disso, nota-se que as categorias 7 e 5 (pontos verdes no gráfico) são a segunda e terceira categorias mais vendidas, respectivamente. Por fim, as demais categorias foram agrupadas (pontos azul no gráfico) em um mesmo cluster por terem valores totais de vendas relativamente próximos.
+
+
+
+
+
+
+## ANÁLISE DOS DADOS - previsão
+
+```{r codigo4}
+#pacotes para análise de séries temporais
+#install.packages("forecast")
+suppressMessages(library(xts))
+suppressMessages(library(forecast))
+
+
+
+#obtem os dados ordenados pela data de processamento (process_date)
+analise2 = arrange(produtosVendidos, process_date)
+
+#retira as duas primeiras linhas da tabela porque as datas sao invalidas: 0000-00-00
+analise2 = analise2[-c(1, 2), ]
+
+
+#obtem um subconjunto para a categoria 1
+#para cada dia, mostra: 
+#a quantidade de produtos vendidos, 
+#o valor total de vendas,
+#o valor total do custo líquido de cada produto, 
+#o lucro obtido no dia
+y = analise2 %>%
+  filter(category == 1) %>%
+  group_by(process_date) %>%
+  summarise(qtd_produtos = sum(quantity),
+            total_venda = sum(price),
+            custo_liq = sum(liquid_cost),
+            lucro = total_venda - custo_liq) #%> arrange(desc(lucro))
+
+
+#mostra as 6 primeiras linhas do subconjunto obtido acima
+head(y)
+
+#mostra as 6 últimas linhas do mesmo subconjunto
+tail(y)
+```
+
+
+Na tabela acima, nota-se que a primeira linha refere-se a data em que completa exatamente 1 ano da data de início do período analisado (01 de junho de 2016). Portanto, todas essas 6 linhas mostradas acima serão ignoradas para que a análise de série temporal seja realizada dentro do período de 1 ano.
+
+
+
+
+```{r codigo5}
+#retira as 6 últimas linhas do subconjunto
+#mostra que a última data agora é 31 de maio de 2017
+y = y[-c((nrow(y)-5):nrow(y)), ]
+tail(y)
+
+
+#mostra uma serie temporal para o lucro da categoria 1
+serie_lucro1 = xts(y$lucro, as.Date(y$process_date), frequency = 12)
+plot(serie_lucro1, type = 'l', xlab = 'Data', ylab = 'Lucro', 
+     main = 'Série Temporal para o Lucro', col = 'blue')
+
+```
+
+
+
+Analisando o gráfico acima, percebe-se que o maior lucro obtido na categoria 1 foi no dia 25 de novembro de 2016, obtendo o valor de R$178.691,01. Ao fazer uma pesquisa rápida, foi possível constatar que o black friday aconteceu nesse dia. Portanto, isso nos fornece uma forte evidência de que a categoria 1, além de ser a mais vendida durante todo o período analisado, tende a ser a categoria mais vendida no black friday. Consequentemente, a categoria 1 fornece o maior lucro dentre todas as categorias de produtos. 
+
+A tabela abaixo mostra (em ordem decrescente) os 6 dias em que a categoria 1 forneceu os maiores lucros (lucro = total_venda - custo_liq). Pelos valores obtidos, nota-se que os últimos dias de novembro e os primeiros dias de janeiro tendem a ser os dias em que mais vende-se os produtos da categoria 1. Em consequência disso, obtem-se os maiores lucros. 
+
+
+
+```{r codigo6, echo=FALSE}
+y %>%
+  arrange(desc(lucro)) %>%
+  head
+```
+
+
+
+Para determinar essa possível sazonalidade (tendência), torna-se necessário uma análise por parte de um especialista da área de negócios ou especialista em vendas da empresa. Entretanto, acredita-se que, devido a black friday acontecer na última sexta-feira do mês de novembro e ser o dia em que mais se vende produtos, os dias subsequentes a black friday possivelmente atraem clientes desejando realizar troca de produtos. Com isso, alguns clientes acabam trocando seus produtos por produtos mais caros e pagando a diferença. 
+
+Nesse sentido, considera-se que essa mesma possibilidade de tendência aplica-se aos primeiros dias de janeiro devido a alguns clientes aproveitarem o término das festividades de natal e réveillon para efetuar a troca de seus produtos. Além disso, ao fazer uma rápida pesquisa, foi possível constatar que o Magazine Luiza realiza há 24 anos uma promoção chamada "Liquidação Fantástica". Essa promoção acontece nos primeiros dias do mês de janeiro. Logo, essa pode ser uma possível explicação para o caso em que o dia 06 de janeiro de 2017 ter sido o dia que forneceu o segundo maior lucro.
+
+
+
+
+
+O trecho de código abaixo calcula e gera um gráfico com uma previsão (forecast) da média do total de vendas de produtos da categoria 1 para os próximos 90 dias (junho, julho e agosto de 2017). 
+
+
+
+```{r codigo7}
+#install.packages("ggfortify")
+suppressMessages(library(ggfortify)) #pacote para recursos avançados de gráfico
+
+#a média do total de vendas para cada mês foi calculada separadamente
+#devido ao período das datas abranger dois anos diferentes (2016 e 2017)
+mes = c('2016-06-30', '2016-07-31', '2016-08-31', '2016-09-30', '2016-10-31', 
+        '2016-11-30', '2016-12-31', '2017-01-31', '2017-02-28', '2017-03-31', 
+        '2017-04-30', '2017-05-31')
+media_totalVenda = c(54043.64, 72910.23, 51237.94, 70816.98, 68800.35, 115493, 
+                     77868.55, 111107.1, 68578.55, 91426.53, 80651.83, 118593.3)
+
+#obtem uma tabela com a média do total de vendas para cada mês
+df = data.frame(mes, media_totalVenda)
+
+
+#obtem uma série temporal
+ts_datas = ts(df$media_totalVenda, start = c(2016, 6), frequency = 12)
+#plot(ts_datas)
+ets_datas = ets(ts_datas)
+f_ets = forecast(ets_datas, h = 3)
+#plot(f_ets)
+
+#plota um gráfico da série temporal com a previsão
+autoplot(f_ets, ts.colour = 'blue', predict.colour = 'red', predict.linetype = 'dashed', 
+         conf.int = TRUE, conf.int.fill = 'yellow') + 
+         ggtitle('Projeção da média de vendas para os próximos 90 dias') +
+         labs(x = 'Mês', y = 'Média total vendas') 
+
+```
+
+
+
+O gráfico acima foi gerado utilizando o modelo ETS do R, que implementa o modelo estatístico "Exponential Smoothing". Este modelo gera no gráfico os valores médio, máximo e mínimo do intervalo de predição. É possível verificar no gráfico que a previsão da média do total de vendas na categoria 1 para os próximos 90 dias é de R$78.234,50. Isso representa um ganho de aproximadamente 35% em comparação ao mesmo período do ano anterior, cuja a média do total de vendas de produtos da categoria 1 para os meses de junho, julho e agosto de 2016 foi de R 59.397,27.
+
+Considerando que a categoria 1 é disparadamente a categoria mais vendida, conclui-se que a escassez de produtos dessa categoria no estoque implica diretamente na redução significativa do total de vendas e, consequentemente, do lucro da empresa. Portanto, devido a essa discrepância (diferença) considerável entre a categoria 1 e as categorias 2, 3, 4, ..., e 11, as demais categorias não serão analisadas neste relatório.
+
+O trecho de código abaixo obtém e mostra (apenas) os 6 primeiros produtos mais vendidos da categoria 1.
+
+
+
+```{r codigo8}
+#obtem a quantidade de vendas para cada produto da categoria 1 em ordem decrescente
+w1 = produtosVendidos %>%
+  filter(category == 1) %>%
+  group_by(code) %>%
+  summarise(qtd_itensVendidos = sum(quantity)) %>%
+  arrange(desc(qtd_itensVendidos))
+
+head(w1)
+```
+
+
+Com isso, é possível observar que o produto cujo o código é igual a 25 (ou 2e35421c34fb588ba40a0c57b3971d24 no arquivo original) é o mais vendido. Logo, a existência desse produto em estoque é essencial para manter a média do total de vendas da categoria 1 e, consequentemente, a média do lucro da empresa.
+
+
+
+
+## CONCLUSÕES
+
+Esse projeto, em forma de um relatório técnico-científico, visou realizar uma análise descritiva e preditiva de um conjunto de dados que representa quase 180000 vendas de um dos maiores varejistas do Brasil. Foi possível concluir que, dentre as 11 categorias de produtos existentes, a categoria 1 é consideravelmente a categoria que contém os produtos mais vendidos. Em consequência disso, essa categoria é capaz de fornecer os maiores lucros para a empresa.
+
+Poderia ter sido feito também uma análise individual das outras categorias. No entanto, a discrepância entre a categoria 1 e as demais categorias, em termos de total de vendas e lucro, é enorme. Com isso, espera-se que as análises dessas categorias poderá fornecer resultados muito próximos entre si. Então, devido a esses detalhes e ao elevado número de páginas desse relatório, tais análises poderão ser realizadas em um próximo projeto.
+
+Como o autor desse relatório não é um especialista em vendas de produtos e nem um especialista na área de negócios da empresa, não considera-se possível afirmar um número exato da quantidade de peças de cada tipo que poderiam ser compradas. Por outro lado, de forma empírica e baseando-se nos insights obtidos por meio das análises, é possível apenas concluir que o produto mais vendido da categoria 1 não deve faltar em estoque. 
+
+Segue abaixo um trecho de código capaz de obter a quantidade de venda de todos os produtos em todas as categorias. Baseando-se nesses números, o profissional responsável pela gestão do controle de estoque poderá tomar decisões mais facilmente.
+
+
+
+
+```{r codigo9}
+#obtem a quantidade de vendas para todos os produtos
+w2 = produtosVendidos %>%
+  group_by(code) %>%
+  summarise(qtd_itensVendidos = sum(quantity)) %>%
+  arrange(desc(qtd_itensVendidos))
+
+#mostra somente as 6 primeiras linhas da tabela obtida acima
+head(w2)
+```
+
+
+
+Para fins de comparação, a tabela abaixo mostra o mesmo resultado da tabela acima, porém com o código original de cada produto.
+
+
+```{r codigo10, echo = FALSE}
+#obtem a quantidade de vendas para todos os produtos
+w3 = arquivo %>%
+  filter(process_status == 'processado') %>%
+  group_by(code) %>%
+  summarise(qtd_itensVendidos = sum(quantity)) %>%
+  arrange(desc(qtd_itensVendidos))
+
+#mostra somente as 6 primeiras linhas da tabela obtida acima
+head(w3)
+```
+
+
+
+
+
