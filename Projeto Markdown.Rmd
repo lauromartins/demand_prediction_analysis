@@ -37,9 +37,9 @@ A linguagem de programação R foi escolhida por ser uma linguagem estatística rob
 #install.packages('dplyr') #Pacote para a transformacao dos dados
 suppressMessages(library(dplyr))
 
-#troque pelo seu diretorio de trabalho
+
 #faz a leitura do arquivo
-arquivo = read.csv("C:/Users/Lauro Martins/Desktop/desafio.csv")
+arquivo = read.csv("desafio.csv")
 
 
 #obtem apenas os produtos que foram vendidos de fato
@@ -203,7 +203,7 @@ tail(y)
 #mostra uma serie temporal para o lucro da categoria 1
 serie_lucro1 = xts(y$lucro, as.Date(y$process_date), frequency = 12)
 plot(serie_lucro1, type = 'l', xlab = 'Data', ylab = 'Lucro', 
-     main = 'Série Temporal para o Lucro', col = 'blue')
+     main = 'Série Temporal para o Lucro da Categoria 1', col = 'blue')
 
 ```
 
@@ -301,7 +301,7 @@ Poderia ter sido feito também uma análise individual das outras categorias. No e
 
 Como o autor desse relatório não é um especialista em vendas de produtos e nem um especialista na área de negócios da empresa, não considera-se possível afirmar um número exato da quantidade de peças de cada tipo que poderiam ser compradas. Por outro lado, de forma empírica e baseando-se nos insights obtidos por meio das análises, é possível apenas concluir que o produto mais vendido da categoria 1 não deve faltar em estoque. 
 
-Segue abaixo um trecho de código capaz de obter a quantidade de venda de todos os produtos em todas as categorias. Baseando-se nesses números, o profissional responsável pela gestão do controle de estoque poderá tomar decisões mais facilmente.
+Segue abaixo um trecho de código capaz de obter a quantidade de vendas de todos os produtos em todas as categorias. Baseando-se nesses números, o profissional responsável pela gestão do controle de estoque poderá tomar decisões mais facilmente.
 
 
 
